@@ -1,0 +1,17 @@
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core"]
+
+[tool.poetry]
+authors = ["takatomatsumura <takato_matsumura@demia.co.jp>"]
+description = ""
+name = "gpt-review-test"
+packages = [{include = "gpt-review"}]
+readme = "README.md"
+version = "0.1.0"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+[tool.poetry.group.dev.dependencies]
+toml-sort = "^0.23.1"
