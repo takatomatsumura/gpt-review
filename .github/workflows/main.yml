@@ -17,3 +17,14 @@ jobs:
       - name: get diff
         # TODO: get pr number from branch name
         run: gh pr diff 2 --repo ${{ github.repository }} --color never > diff.txt
+      - name: python set up
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: install library
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install -U openai python-dotenv
+          deactivate
