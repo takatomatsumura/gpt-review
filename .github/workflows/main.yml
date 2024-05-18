@@ -1,0 +1,15 @@
+name: gpt-review
+
+on:
+  push:
+    branches:
+      - feature/github-actions
+
+jobs:
+  gpt-review:
+    name: gpt-review
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checks-out my repository
+        uses: actions/checkout@v2
