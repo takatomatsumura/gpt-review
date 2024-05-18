@@ -6,12 +6,14 @@ requires = ["poetry-core"]
 authors = ["takatomatsumura <takato_matsumura@demia.co.jp>"]
 description = ""
 name = "gpt-review-test"
-packages = [{include = "gpt-review"}]
+packages = [{include = "gpt_review"}]
 readme = "README.md"
 version = "0.1.0"
 
 [tool.poetry.dependencies]
+openai = "^1.30.1"
 python = "^3.12"
+python-dotenv = "^1.0.1"
 
 [tool.poetry.group.dev.dependencies]
 toml-sort = "^0.23.1"
