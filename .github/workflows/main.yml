@@ -15,4 +15,5 @@ jobs:
       - name: Checks-out my repository
         uses: actions/checkout@v4
       - name: get diff
-        run: gh pr diff ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --color never > diff.txt
+        # TODO: get pr number from branch name
+        run: gh pr diff 2 --repo ${{ github.repository }} --color never > diff.txt
