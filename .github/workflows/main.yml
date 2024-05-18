@@ -28,3 +28,5 @@ jobs:
           pip install --upgrade pip
           pip install -U openai python-dotenv
           deactivate
+      - name: create temporary file
+        run: touch tmp.txt
