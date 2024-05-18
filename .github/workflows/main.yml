@@ -12,4 +12,6 @@ jobs:
 
     steps:
       - name: Checks-out my repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+      - name: get diff
+        run: gh pr diff ${{ github.event.number }} --repo ${{ github.repository }} --color never > diff.txt
