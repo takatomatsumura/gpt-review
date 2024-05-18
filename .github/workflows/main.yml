@@ -9,7 +9,8 @@ jobs:
   gpt-review:
     name: gpt-review
     runs-on: ubuntu-latest
-
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checks-out my repository
         uses: actions/checkout@v4
