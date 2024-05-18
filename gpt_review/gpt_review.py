@@ -7,14 +7,14 @@ def review():
     AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
     AZURE_API_BASE = os.getenv("AZURE_API_BASE")
     AZURE_API_VERSION = os.getenv("AZURE_API_VERSION")
-    AZURE_DEPLOY_MODEl = os.getenv("AZURE_DEPLOY_MODEl")
+    AZURE_DEPLOY_MODEL = os.getenv("AZURE_DEPLOY_MODEL")
     DIFF_FILE = os.getenv("DIFF_FILE", "diff.txt")
 
     client = AzureOpenAI(
         api_key=AZURE_OPENAI_API_KEY,
         api_version=AZURE_API_VERSION,
         azure_endpoint=AZURE_API_BASE,
-        azure_deployment=AZURE_DEPLOY_MODEl,
+        azure_deployment=AZURE_DEPLOY_MODEL,
         timeout=120,
     )
 
@@ -86,7 +86,7 @@ def review():
                 f"\n diff: {diff}",
             },
         ],
-        model=AZURE_DEPLOY_MODEl,
+        model=AZURE_DEPLOY_MODEL,
         functions=functions,
         max_tokens=4096,
     )

@@ -30,3 +30,13 @@ jobs:
           deactivate
       - name: create temporary file
         run: touch tmp.txt
+      - name: review from gpt
+        env:
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_API_BASE: ${{ secrets.AZURE_API_BASE }}
+          AZURE_API_VERSION: ${{ secrets.AZURE_API_VERSION }}
+          AZURE_DEPLOY_MODEL: ${{ secrets.AZURE_DEPLOY_MODEL }}
+        run: |
+          source .venv/bin/activate
+          python main.py
+          deactivate
