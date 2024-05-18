@@ -1,7 +1,8 @@
 name: gpt-review
 
 on:
-  push:
+  pull_request:
+    types: ["opened", "synchronize"]
     branches:
       - feature/github-actions
 
@@ -15,8 +16,7 @@ jobs:
       - name: Checks-out my repository
         uses: actions/checkout@v4
       - name: get diff
-        # TODO: get pr number from branch name
-        run: gh pr diff 2 --repo ${{ github.repository }} --color never > diff.txt
+        run: gh pr diff ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --color never > diff.txt
       - name: python set up
         uses: actions/setup-python@v5
         with:
