@@ -16,4 +16,5 @@ python = "^3.12"
 python-dotenv = "^1.0.1"
 
 [tool.poetry.group.dev.dependencies]
+ruff = "^0.4.4"
 toml-sort = "^0.23.1"
