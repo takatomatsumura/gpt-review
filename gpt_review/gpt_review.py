@@ -1,9 +1,31 @@
 import os
+import re
 import json
 from openai import AzureOpenAI
 
 
 PROMPT_DIFF_FILE = "diff_with_line_number.txt"
+
+
+def exclude_files_from_diff(diff_file: str):
+    with open(diff_file, "r") as f:
+        diff = f.readlines()
+    result: list[str] = []
+    EXCLUDE_FILES = [s.strip() for s in os.getenv("EXCLUDE_FILES", "").split(",") if s]
+    if not EXCLUDE_FILES:
+        return
+    exclude = False
+    for d in diff:
+        if d.startswith("diff --git"):
+            file = d.split(" ")[-1].replace("\n", "").replace("b/", "")
+            exclude = any(
+                [re.match(rf"{exclude_file}", file) for exclude_file in EXCLUDE_FILES]
+            )
+        if exclude:
+            continue
+        result.append(d)
+    with open(diff_file, "w") as f:
+        f.writelines(result)
 
 
 def add_line_numbers_to_diff(diff_file: str):
@@ -42,6 +64,7 @@ def review():
     DIFF_FILE = os.getenv("DIFF_FILE", "diff.txt")
     PROMPT_FILE = os.getenv("PROMPT_FILE", "prompt.md")
 
+    exclude_files_from_diff(diff_file=DIFF_FILE)
     add_line_numbers_to_diff(diff_file=DIFF_FILE)
 
     client = AzureOpenAI(

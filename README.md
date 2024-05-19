@@ -30,4 +30,5 @@ AZURE_DEPLOY_MODEL=<AZURE_DEPLOY_MODEL>
 <!-- optional -->
 DIFF_FILE=diff.txt
 PROMPT_FILE=prompt.md
+EXCLUDE_FILES=README\.md,prompt\.md,pyproject\.toml,poetry\.lock,\.gitignore
 ```
