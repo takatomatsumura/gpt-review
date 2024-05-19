@@ -98,9 +98,11 @@ def review():
 def github_comment(reviews: list[dict]):
     request_body = {
         "body": "GPT review finish.",
-        "event": "COMMENT",
+        "event": "COMMENT" if reviews else "APPROVE",
         "comments": [],
     }
+    if not reviews:
+        request_body["body"] += "\n\n指摘事項はありませんでした。"
     for review in reviews:
         comment_body = f"*{review['perspective']}* 観点の *{review['level']}* レベルの指摘\n {review['comment']}\n\n```suggestion\n{review['suggestion']}\n```"
         comment = {
