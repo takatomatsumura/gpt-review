@@ -40,6 +40,7 @@ def review():
     AZURE_API_VERSION = os.getenv("AZURE_API_VERSION")
     AZURE_DEPLOY_MODEL = os.getenv("AZURE_DEPLOY_MODEL")
     DIFF_FILE = os.getenv("DIFF_FILE", "diff.txt")
+    PROMPT_FILE = os.getenv("PROMPT_FILE", "prompt.md")
 
     add_line_numbers_to_diff(diff_file=DIFF_FILE)
 
@@ -108,18 +109,14 @@ def review():
         }
     ]
 
+    with open(PROMPT_FILE, "r") as f:
+        template = f.read()
+    content = template.format(diff=diff)
     chat_completion = client.chat.completions.create(
         messages=[
             {
                 "role": "user",
-                "content": "The differences provided are code differences that occurred on GitHub during app development.\n"
-                "Please conduct a code review from the perspectives of security, performance, and maintainability, and provide suggestions for corrections.\n"
-                "However, the output format should include the location of the suggestion (file path and line number), the content of the observation, and the corrected code in JSON format.\n"
-                "Additionally, please include motivational and partially affirmative comments in the review comments, such as 'Almost there! Keep it up!' or 'This is good from a maintainability perspective, but it's not so good from a performance perspective.'"
-                "Be careful not to offend the implementer. The review content can be in Japanese. Please use Japanese for the term 'perspective' and English for 'level'."
-                "Since the suggestion involves the corrected code, make sure it is not influenced by Japanese or English."
-                "Please do not include natural language content, always ensure the content is appropriate as a programming language."
-                f"\n diff: {diff}",
+                "content": content,
             },
         ],
         model=AZURE_DEPLOY_MODEL,
