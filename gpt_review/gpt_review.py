@@ -3,12 +3,45 @@ import json
 from openai import AzureOpenAI
 
 
+PROMPT_DIFF_FILE = "diff_with_line_number.txt"
+
+
+def add_line_numbers_to_diff(diff_file: str):
+    with open(diff_file, "r") as f:
+        diff = f.readlines()
+    result: list[str] = []
+    line_number: int = 0
+    for d in diff:
+        if d.startswith("+++") or d.startswith("---"):
+            result.append(d)
+            continue
+        if d.startswith("@@"):
+            headers = d.split(" ")
+            line_number = int(headers[2].split(",")[0].replace("+", ""))
+            result.append(d)
+            continue
+        if d.startswith(" "):
+            d = f" {line_number}" + d
+            line_number += 1
+        if d.startswith("+"):
+            d = f" {line_number}" + d
+            line_number += 1
+        if d.startswith("-"):
+            d = " " + d
+        result.append(d)
+
+    with open(PROMPT_DIFF_FILE, "w") as f:
+        f.writelines(result)
+
+
 def review():
     AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
     AZURE_API_BASE = os.getenv("AZURE_API_BASE")
     AZURE_API_VERSION = os.getenv("AZURE_API_VERSION")
     AZURE_DEPLOY_MODEL = os.getenv("AZURE_DEPLOY_MODEL")
     DIFF_FILE = os.getenv("DIFF_FILE", "diff.txt")
+
+    add_line_numbers_to_diff(diff_file=DIFF_FILE)
 
     client = AzureOpenAI(
         api_key=AZURE_OPENAI_API_KEY,
@@ -17,7 +50,7 @@ def review():
         azure_deployment=AZURE_DEPLOY_MODEL,
     )
 
-    with open(DIFF_FILE, "rb") as f:
+    with open(PROMPT_DIFF_FILE, "r") as f:
         diff = f.read()
 
     functions = [
