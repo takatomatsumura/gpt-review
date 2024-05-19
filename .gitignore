@@ -177,3 +177,7 @@ media/
 
 # Celery beat schedule
 *.db
+
+diff.txt
+diff_with_line_number.txt
+tmp.txt
