@@ -104,7 +104,7 @@ def github_comment(reviews: list[dict]):
     if not reviews:
         request_body["body"] += "\n\n指摘事項はありませんでした。"
     for review in reviews:
-        comment_body = f"*{review['perspective']}* 観点の *{review['level']}* レベルの指摘\n {review['comment']}\n\n```suggestion\n{review['suggestion']}\n```"
+        comment_body = f"**{review['perspective']}** 観点の **{review['level']}** レベルの指摘\n {review['comment']}\n\n```suggestion\n{review['suggestion']}\n```"
         comment = {
             "path": review["file_path"],
             "position": review["line_number"],
