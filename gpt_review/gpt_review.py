@@ -47,7 +47,9 @@ def review():
                                 },
                                 "level": {
                                     "type": "string",
-                                    "description": "Evaluate how critical the issue is on a scale. Please choose from the following six options: Critical, High, Medium, Low, Warning, Info. Note that the level decreases from Critical to Info. Must be English.",
+                                    "description": "Evaluate how critical the issue is on a scale."
+                                    "Please choose from the following six options: Critical, High, Medium, Low, Warning, Info."
+                                    "Note that the level decreases from Critical to Info. Must be English.",
                                 },
                                 "comment": {
                                     "type": "string",
@@ -55,7 +57,8 @@ def review():
                                 },
                                 "suggestion": {
                                     "type": "string",
-                                    "description": "Only write the corrected code. Do not write review comments or points of issue here.",
+                                    "description": "Only write the corrected code. Do not write review comments or points of issue here, make sure it is not influenced by Japanese or English."
+                                    "Please maintain the indentation of the code below. Additionally, if there is no specific code to correct, it can be omitted.",
                                 },
                             },
                             "required": [
@@ -64,7 +67,6 @@ def review():
                                 "perspective",
                                 "level",
                                 "comment",
-                                "suggestion",
                             ],
                         },
                     },
@@ -83,6 +85,7 @@ def review():
                 "Additionally, please include motivational and partially affirmative comments in the review comments, such as 'Almost there! Keep it up!' or 'This is good from a maintainability perspective, but it's not so good from a performance perspective.'"
                 "Be careful not to offend the implementer. The review content can be in Japanese. Please use Japanese for the term 'perspective' and English for 'level'."
                 "Since the suggestion involves the corrected code, make sure it is not influenced by Japanese or English."
+                "Please do not include natural language content, always ensure the content is appropriate as a programming language."
                 f"\n diff: {diff}",
             },
         ],
@@ -104,7 +107,9 @@ def github_comment(reviews: list[dict]):
     if not reviews:
         request_body["body"] += "\n\n指摘事項はありませんでした。"
     for review in reviews:
-        comment_body = f"**{review['perspective']}** 観点の **{review['level']}** レベルの指摘\n {review['comment']}\n\n```suggestion\n{review['suggestion']}\n```"
+        comment_body = f"**{review['perspective']}** 観点の **{review['level']}** レベルの指摘\n {review['comment']}"
+        if suggestion := review.get("suggestion"):
+            comment_body += f"\n\n```suggestion\n{suggestion}\n```"
         comment = {
             "path": review["file_path"],
             "position": review["line_number"],
