@@ -37,11 +37,11 @@ jobs:
           AZURE_API_VERSION: ${{ secrets.AZURE_API_VERSION }}
           AZURE_DEPLOY_MODEL: ${{ secrets.AZURE_DEPLOY_MODEL }}
         run: |
-          touch tmp.txt
+          touch tmp.txt diff_with_line_number.txt
           . .venv/bin/activate
           python main.py
           deactivate
-          rm diff.txt
+          rm diff.txt diff_with_line_number.txt
       - name: show review
         run: cat tmp.txt
       - name: submit review to pull request
