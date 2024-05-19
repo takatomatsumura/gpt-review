@@ -8,7 +8,7 @@ I will now present the differences that have arisen in the Pull Request on GitHu
     Read the path of the file to be pointed out from the differences.
   - line_number
 
-    Read the line numbers listed at the left end of each line from the provided differences  such as '`line_number`+ `code`' not '`line_number` `code`'. Always specify the line numbers of the code after the changes, not before.
+    Read the line numbers listed at the left end of each line from the provided differences  such as "`line_number`+ `code`" not "`line_number` `code`". Always specify the line numbers of the code after the changes, not before.
   - perspective
 
     Select the perspective from which the code had an issue: 'パフォーマンス', 'セキュリティ', or '保守性'. Must be Japanese.
