@@ -96,9 +96,18 @@ def review():
 
 
 def github_comment(reviews: list[dict]):
-    args = ""
+    request_body = {
+        "body": "GPT review finish.",
+        "event": "COMMENT",
+        "comments": [],
+    }
     for review in reviews:
-        comment = f"*{review['perspective']}* 観点の *{review['level']}* レベルの指摘\n {review['comment']}\n\n```suggestion\n{review['suggestion']}\n```"
-        args += f' -f "comments[][path]={review["file_path"]}" -f "comments[][position]={review["line_number"]}" -f "comments[][body]={comment}"'
+        comment_body = f"*{review['perspective']}* 観点の *{review['level']}* レベルの指摘\n {review['comment']}\n\n```suggestion\n{review['suggestion']}\n```"
+        comment = {
+            "path": review["file_path"],
+            "position": review["line_number"],
+            "body": comment_body,
+        }
+        request_body["comments"].append(comment)
     with open("tmp.txt", "w") as f:
-        f.writelines(args)
+        f.writelines(json.dumps(request_body, ensure_ascii=False))
