@@ -26,5 +26,9 @@ $ poetry run pre-commit install
 AZURE_OPENAI_API_KEY=<AZURE_OPENAI_API_KEY>
 AZURE_API_BASE=<AZURE_API_BASE>
 AZURE_API_VERSION=<AZURE_API_VERSION>
-AZURE_DEPLOY_MODEl=<AZURE_DEPLOY_MODEl>
+AZURE_DEPLOY_MODEL=<AZURE_DEPLOY_MODEL>
+<!-- optional -->
+DIFF_FILE=diff.txt
+PROMPT_FILE=prompt.md
+EXCLUDE_FILES=README\.md,prompt\.md,pyproject\.toml,poetry\.lock,\.gitignore
 ```
