@@ -15,7 +15,6 @@ def review():
         api_version=AZURE_API_VERSION,
         azure_endpoint=AZURE_API_BASE,
         azure_deployment=AZURE_DEPLOY_MODEL,
-        timeout=120,
     )
 
     with open(DIFF_FILE, "rb") as f:
@@ -35,11 +34,12 @@ def review():
                             "properties": {
                                 "file_path": {
                                     "type": "string",
-                                    "description": "pointed out file path",
+                                    "description": "Read the path of the file to be pointed out from the differences.",
                                 },
                                 "line_number": {
                                     "type": "number",
-                                    "description": "pointed out line number",
+                                    "description": "Read the line numbers listed at the left end of each line from the provided differences such as ' <line_number>+ <code>' not '<line_number> <code>'."
+                                    "Always specify the line numbers of the code after the changes, not before.",
                                 },
                                 "perspective": {
                                     "type": "string",
@@ -51,11 +51,11 @@ def review():
                                     "Please choose from the following six options: Critical, High, Medium, Low, Warning, Info."
                                     "Note that the level decreases from Critical to Info. Must be English.",
                                 },
-                                "comment": {
+                                "review_comment": {
                                     "type": "string",
-                                    "description": "pointed out content",
+                                    "description": "Describe the specific issues. Write the code correction proposals in 'fixed_code'. Must be Japanese.",
                                 },
-                                "suggestion": {
+                                "fixed_code": {
                                     "type": "string",
                                     "description": "Only write the corrected code. Do not write review comments or points of issue here, make sure it is not influenced by Japanese or English."
                                     "Please maintain the indentation of the code below. Additionally, if there is no specific code to correct, it can be omitted.",
@@ -66,7 +66,7 @@ def review():
                                 "line_number",
                                 "perspective",
                                 "level",
-                                "comment",
+                                "review_comment",
                             ],
                         },
                     },
@@ -107,9 +107,9 @@ def github_comment(reviews: list[dict]):
     if not reviews:
         request_body["body"] += "\n\n指摘事項はありませんでした。"
     for review in reviews:
-        comment_body = f"**{review['perspective']}** 観点の **{review['level']}** レベルの指摘\n {review['comment']}"
-        if suggestion := review.get("suggestion"):
-            comment_body += f"\n\n```suggestion\n{suggestion}\n```"
+        comment_body = f"**{review['perspective']}** 観点の **{review['level']}** レベルの指摘\n {review['review_comment']}"
+        if fixed_code := review.get("fixed_code"):
+            comment_body += f"\n\n```suggestion\n{fixed_code}\n```"
         comment = {
             "path": review["file_path"],
             "position": review["line_number"],
