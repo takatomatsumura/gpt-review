@@ -197,6 +197,7 @@ def review():
         model=AZURE_DEPLOY_MODEL,
         functions=functions,
         max_tokens=4096,
+        temperature=0,
     )
     response = chat_completion.choices[0].message.function_call.arguments
     reviews = json.loads(response)["reviews"]
