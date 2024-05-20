@@ -218,7 +218,7 @@ def github_comment(reviews: list[dict]):
             comment_body += f"\n\n```suggestion\n{fixed_code}\n```"
         comment = {
             "path": review["file_path"],
-            "position": review["line_number"],
+            "line": review["line_number"],
             "body": comment_body,
         }
         request_body["comments"].append(comment)
