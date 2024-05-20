@@ -28,6 +28,57 @@ def exclude_files_from_diff(diff_file: str):
         f.writelines(result)
 
 
+def remove_unnecessary_lines(diff_file: str):
+    with open(diff_file, "r") as f:
+        diff = f.read()
+
+    # remove no added diff
+    diff_header_regex = r"@@ -\d+,\d+ \+\d+,\d+ @@ .*\n"
+    split_lines = re.split(rf"({diff_header_regex})", "".join(diff))
+    result: list[tuple[str, str]] = []
+    regex_match_flag = False
+    for index, item in enumerate(split_lines):
+        if re.match(rf"{diff_header_regex}", item):
+            regex_match_flag = True
+            continue
+        if regex_match_flag:
+            result.append((split_lines[index - 1], item))
+            regex_match_flag = False
+            continue
+        result.append(("", item))
+
+    removed_result: list[str] = []
+    for item in result:
+        if not item[0]:
+            removed_result.append("".join(item))
+            continue
+        has_addition = False
+        for line in item[1].split("\n"):
+            if line.startswith("+ "):
+                has_addition = True
+                continue
+        if has_addition:
+            removed_result.append("".join(item))
+    removed_diff = "".join(removed_result)
+
+    # remove no diff file
+    file_header_regex = r"diff --git .*\nindex .*\n--- .*\n\+\+\+ .*\n"
+    split_lines = re.split(rf"({file_header_regex})", removed_diff)
+    split_diff: list[str] = []
+    for index, item in enumerate(split_lines):
+        if re.match(rf"{file_header_regex}", item):
+            regex_match_flag = True
+            continue
+        if regex_match_flag and item:
+            regex_match_flag = False
+            split_diff.extend([split_lines[index - 1], item])
+            continue
+
+    diff = "".join(split_diff)
+    with open(diff_file, "w") as f:
+        f.write(diff)
+
+
 def add_line_numbers_to_diff(diff_file: str):
     with open(diff_file, "r") as f:
         diff = f.readlines()
@@ -45,10 +96,10 @@ def add_line_numbers_to_diff(diff_file: str):
         if d.startswith(" "):
             d = f" {line_number}" + d
             line_number += 1
-        if d.startswith("+"):
+        if d.startswith("+ "):
             d = f" {line_number}" + d
             line_number += 1
-        if d.startswith("-"):
+        if d.startswith("- "):
             d = " " + d
         result.append(d)
 
@@ -65,6 +116,7 @@ def review():
     PROMPT_FILE = os.getenv("PROMPT_FILE", "prompt.md")
 
     exclude_files_from_diff(diff_file=DIFF_FILE)
+    remove_unnecessary_lines(diff_file=DIFF_FILE)
     add_line_numbers_to_diff(diff_file=DIFF_FILE)
 
     client = AzureOpenAI(
