@@ -15,15 +15,15 @@ def exclude_files_from_diff(diff_file: str):
     if not EXCLUDE_FILES:
         return
     exclude = False
-    for d in diff:
-        if d.startswith("diff --git"):
-            file = d.split(" ")[-1].replace("\n", "").replace("b/", "")
+    for line in diff:
+        if line.startswith("diff --git"):
+            file = line.split(" ")[-1].replace("\n", "").replace("b/", "")
             exclude = any(
                 [re.match(rf"{exclude_file}", file) for exclude_file in EXCLUDE_FILES]
             )
         if exclude:
             continue
-        result.append(d)
+        result.append(line)
     with open(diff_file, "w") as f:
         f.writelines(result)
 
@@ -54,7 +54,9 @@ def remove_unnecessary_lines(diff_file: str):
             continue
         has_addition = False
         for line in item[1].split("\n"):
-            if line.startswith("+ "):
+            if line.startswith("+++"):
+                continue
+            if line.startswith("+"):
                 has_addition = True
                 continue
         if has_addition:
@@ -84,24 +86,24 @@ def add_line_numbers_to_diff(diff_file: str):
         diff = f.readlines()
     result: list[str] = []
     line_number: int = 0
-    for d in diff:
-        if d.startswith("+++") or d.startswith("---"):
-            result.append(d)
+    for line in diff:
+        if line.startswith("+++") or line.startswith("---"):
+            result.append(line)
             continue
-        if d.startswith("@@"):
-            headers = d.split(" ")
+        if line.startswith("@@"):
+            headers = line.split(" ")
             line_number = int(headers[2].split(",")[0].replace("+", ""))
-            result.append(d)
+            result.append(line)
             continue
-        if d.startswith(" "):
-            d = f" {line_number}" + d
+        if line.startswith(" "):
+            line = f" {line_number}" + line
             line_number += 1
-        if d.startswith("+ "):
-            d = f" {line_number}" + d
+        if line.startswith("+"):
+            line = f" {line_number}" + line
             line_number += 1
-        if d.startswith("- "):
-            d = " " + d
-        result.append(d)
+        if line.startswith("-"):
+            line = " " + line
+        result.append(line)
 
     with open(PROMPT_DIFF_FILE, "w") as f:
         f.writelines(result)
