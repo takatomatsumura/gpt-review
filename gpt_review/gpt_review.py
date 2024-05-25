@@ -6,6 +6,7 @@ from openai import AzureOpenAI
 
 
 PROMPT_DIFF_FILE = "diff_with_line_number.txt"
+GENERATED_MAX_TOKEN = 2048
 
 
 def exclude_files_from_diff(diff_file: str):
@@ -110,7 +111,7 @@ def add_line_numbers_to_diff(diff_file: str):
         f.writelines(result)
 
 
-def split_difference_by_file() -> list[str]:
+def get_content_list() -> list[str]:
     with open(PROMPT_DIFF_FILE, "r") as f:
         diff = f.read()
     file_header_regex = re.compile(r"diff --git .*\nindex .*\n--- .*\n\+\+\+ .*\n")
@@ -124,7 +125,9 @@ def split_difference_by_file() -> list[str]:
     with open(PROMPT_FILE, "r") as f:
         template = f.read()
     encoding = tiktoken.encoding_for_model("gpt-4")
-    MAX_TOKEN = int(os.getenv("MAX_TOKEN", "8000"))
+    MAX_TOKEN = int(os.getenv("MAX_TOKEN", "8000")) - GENERATED_MAX_TOKEN
+    if MAX_TOKEN < 1:
+        raise Exception(f"MAX_TOKEN must be lager than {GENERATED_MAX_TOKEN}.")
     template_token_length = len(encoding.encode(template.format(diff="")))
     content_length = MAX_TOKEN - template_token_length
     content_list: list[str] = []
@@ -160,7 +163,7 @@ def review():
     exclude_files_from_diff(diff_file=DIFF_FILE)
     remove_unnecessary_lines(diff_file=DIFF_FILE)
     add_line_numbers_to_diff(diff_file=DIFF_FILE)
-    content_list = split_difference_by_file()
+    content_list = get_content_list()
 
     reviews: list[dict] = []
     client = AzureOpenAI(
@@ -236,7 +239,7 @@ def review():
             ],
             model=AZURE_DEPLOY_MODEL,
             functions=functions,
-            max_tokens=4096,
+            max_tokens=GENERATED_MAX_TOKEN,
             temperature=0,
         )
         response = chat_completion.choices[0].message.function_call.arguments
