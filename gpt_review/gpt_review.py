@@ -6,7 +6,7 @@ from openai import AzureOpenAI
 
 
 PROMPT_DIFF_FILE = "diff_with_line_number.txt"
-GENERATED_MAX_TOKEN = 2048
+OUTPUT_MAX_TOKEN = os.getenv("OUTPUT_MAX_TOKEN", 2048)
 
 
 def exclude_files_from_diff(diff_file: str):
@@ -125,16 +125,16 @@ def get_content_list() -> list[str]:
     with open(PROMPT_FILE, "r") as f:
         template = f.read()
     encoding = tiktoken.encoding_for_model("gpt-4")
-    MAX_TOKEN = int(os.getenv("MAX_TOKEN", "8000")) - GENERATED_MAX_TOKEN
-    if MAX_TOKEN < 1:
-        raise Exception(f"MAX_TOKEN must be lager than {GENERATED_MAX_TOKEN}.")
+    INPUT_MAX_TOKEN = int(os.getenv("INPUT_MAX_TOKEN", "8000")) - OUTPUT_MAX_TOKEN
+    if INPUT_MAX_TOKEN < 1:
+        raise Exception(f"INPUT_MAX_TOKEN must be lager than {OUTPUT_MAX_TOKEN}.")
     template_token_length = len(encoding.encode(template.format(diff="")))
-    content_length = MAX_TOKEN - template_token_length
+    content_length = INPUT_MAX_TOKEN - template_token_length
     content_list: list[str] = []
     for diff in diff_list:
         content = template.format(diff=diff)
         token = encoding.encode(text=content)
-        if len(token) > MAX_TOKEN:
+        if len(token) > INPUT_MAX_TOKEN:
             token = encoding.encode(text=diff)
             match = file_header_regex.match(diff)
             file_header = match.group(0)
@@ -239,7 +239,7 @@ def review():
             ],
             model=AZURE_DEPLOY_MODEL,
             functions=functions,
-            max_tokens=GENERATED_MAX_TOKEN,
+            max_tokens=OUTPUT_MAX_TOKEN,
             temperature=0,
         )
         response = chat_completion.choices[0].message.function_call.arguments
