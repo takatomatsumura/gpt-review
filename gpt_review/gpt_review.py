@@ -1,3 +1,4 @@
+import tiktoken
 import os
 import re
 import json
@@ -114,11 +115,32 @@ def split_difference_by_file() -> list[str]:
         diff = f.read()
     file_header_regex = r"diff --git .*\nindex .*\n--- .*\n\+\+\+ .*\n"
     split_lines = re.split(rf"({file_header_regex})", diff)
-    result: list[str] = []
+    diff_list: list[str] = []
     for index, item in enumerate(split_lines):
         if re.match(rf"{file_header_regex}", item):
-            result.append(item + split_lines[index + 1])
-    return result
+            diff_list.append(item + split_lines[index + 1])
+
+    PROMPT_FILE = os.getenv("PROMPT_FILE", "prompt.md")
+    with open(PROMPT_FILE, "r") as f:
+        template = f.read()
+    encoding = tiktoken.encoding_for_model("gpt-4")
+    MAX_TOKEN = int(os.getenv("MAX_TOKEN", "8000"))
+    template_token_length = len(encoding.encode(template.format(diff="")))
+    content_length = MAX_TOKEN - template_token_length
+    content_list: list[str] = []
+    for diff in diff_list:
+        content = template.format(diff=diff)
+        token = encoding.encode(text=content)
+        if len(token) > MAX_TOKEN:
+            token = encoding.encode(text=diff)
+            new_diff_list = [
+                encoding.decode(token[i : i + content_length])
+                for i in range(0, len(token), content_length)
+            ]
+            content_list.extend([template.format(diff=item) for item in new_diff_list])
+            continue
+        content_list.append(content)
+    return content_list
 
 
 def review():
@@ -127,19 +149,16 @@ def review():
     AZURE_API_VERSION = os.getenv("AZURE_API_VERSION")
     AZURE_DEPLOY_MODEL = os.getenv("AZURE_DEPLOY_MODEL")
     DIFF_FILE = os.getenv("DIFF_FILE", "diff.txt")
-    PROMPT_FILE = os.getenv("PROMPT_FILE", "prompt.md")
 
     exclude_files_from_diff(diff_file=DIFF_FILE)
     remove_unnecessary_lines(diff_file=DIFF_FILE)
     add_line_numbers_to_diff(diff_file=DIFF_FILE)
-    diff_list = split_difference_by_file()
+    content_list = split_difference_by_file()
 
     reviews: list[dict] = []
-    if diff_list:
-        with open(PROMPT_FILE, "r") as f:
-            template = f.read()
-        for diff in diff_list:
-            if not diff:
+    if content_list:
+        for content in content_list:
+            if not content:
                 continue
             client = AzureOpenAI(
                 api_key=AZURE_OPENAI_API_KEY,
@@ -203,7 +222,6 @@ def review():
                 }
             ]
 
-            content = template.format(diff=diff)
             chat_completion = client.chat.completions.create(
                 messages=[
                     {
