@@ -6,6 +6,7 @@ from openai import AzureOpenAI
 
 
 PROMPT_DIFF_FILE = "diff_with_line_number.txt"
+OUTPUT_MAX_TOKEN = int(os.getenv("OUTPUT_MAX_TOKEN", "2048"))
 
 
 def exclude_files_from_diff(diff_file: str):
@@ -110,7 +111,7 @@ def add_line_numbers_to_diff(diff_file: str):
         f.writelines(result)
 
 
-def split_difference_by_file() -> list[str]:
+def get_content_list() -> list[str]:
     with open(PROMPT_DIFF_FILE, "r") as f:
         diff = f.read()
     file_header_regex = re.compile(r"diff --git .*\nindex .*\n--- .*\n\+\+\+ .*\n")
@@ -124,14 +125,16 @@ def split_difference_by_file() -> list[str]:
     with open(PROMPT_FILE, "r") as f:
         template = f.read()
     encoding = tiktoken.encoding_for_model("gpt-4")
-    MAX_TOKEN = int(os.getenv("MAX_TOKEN", "8000"))
+    INPUT_MAX_TOKEN = int(os.getenv("INPUT_MAX_TOKEN", "8000")) - OUTPUT_MAX_TOKEN
+    if INPUT_MAX_TOKEN < 1:
+        raise Exception(f"INPUT_MAX_TOKEN must be lager than {OUTPUT_MAX_TOKEN}.")
     template_token_length = len(encoding.encode(template.format(diff="")))
-    content_length = MAX_TOKEN - template_token_length
+    content_length = INPUT_MAX_TOKEN - template_token_length
     content_list: list[str] = []
     for diff in diff_list:
         content = template.format(diff=diff)
         token = encoding.encode(text=content)
-        if len(token) > MAX_TOKEN:
+        if len(token) > INPUT_MAX_TOKEN:
             token = encoding.encode(text=diff)
             match = file_header_regex.match(diff)
             file_header = match.group(0)
@@ -160,7 +163,7 @@ def review():
     exclude_files_from_diff(diff_file=DIFF_FILE)
     remove_unnecessary_lines(diff_file=DIFF_FILE)
     add_line_numbers_to_diff(diff_file=DIFF_FILE)
-    content_list = split_difference_by_file()
+    content_list = get_content_list()
 
     reviews: list[dict] = []
     client = AzureOpenAI(
@@ -236,7 +239,7 @@ def review():
             ],
             model=AZURE_DEPLOY_MODEL,
             functions=functions,
-            max_tokens=4096,
+            max_tokens=OUTPUT_MAX_TOKEN,
             temperature=0,
         )
         response = chat_completion.choices[0].message.function_call.arguments
