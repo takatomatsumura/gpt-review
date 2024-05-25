@@ -38,7 +38,8 @@ jobs:
           AZURE_API_VERSION: ${{ secrets.AZURE_API_VERSION }}
           AZURE_DEPLOY_MODEL: ${{ secrets.AZURE_DEPLOY_MODEL }}
           EXCLUDE_FILES: ${{ vars.EXCLUDE_FILES }}
-          MAX_TOKEN: ${{ vars.MAX_TOKEN }}
+          INPUT_MAX_TOKEN: ${{ vars.INPUT_MAX_TOKEN }}
+          OUTPUT_MAX_TOKEN: ${{ vars.OUTPUT_MAX_TOKEN }}
         run: |
           touch tmp.txt diff_with_line_number.txt
           . .venv/bin/activate
