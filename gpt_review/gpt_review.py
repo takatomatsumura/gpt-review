@@ -113,11 +113,11 @@ def add_line_numbers_to_diff(diff_file: str):
 def split_difference_by_file() -> list[str]:
     with open(PROMPT_DIFF_FILE, "r") as f:
         diff = f.read()
-    file_header_regex = r"diff --git .*\nindex .*\n--- .*\n\+\+\+ .*\n"
-    split_lines = re.split(rf"({file_header_regex})", diff)
+    file_header_regex = re.compile(r"diff --git .*\nindex .*\n--- .*\n\+\+\+ .*\n")
+    split_lines = re.split(rf"({file_header_regex.pattern})", diff)
     diff_list: list[str] = []
     for index, item in enumerate(split_lines):
-        if re.match(rf"{file_header_regex}", item):
+        if file_header_regex.match(item):
             diff_list.append(item + split_lines[index + 1])
 
     PROMPT_FILE = os.getenv("PROMPT_FILE", "prompt.md")
@@ -133,10 +133,17 @@ def split_difference_by_file() -> list[str]:
         token = encoding.encode(text=content)
         if len(token) > MAX_TOKEN:
             token = encoding.encode(text=diff)
+            match = file_header_regex.match(diff)
+            file_header = match.group(0)
+            length = content_length - len(encoding.encode(text=file_header))
             new_diff_list = [
-                encoding.decode(token[i : i + content_length])
-                for i in range(0, len(token), content_length)
+                encoding.decode(token[i : i + length])
+                for i in range(0, len(token), length)
             ]
+            for index, new_diff in enumerate(new_diff_list):
+                if file_header_regex.match(new_diff):
+                    continue
+                new_diff_list[index] = file_header + new_diff
             content_list.extend([template.format(diff=item) for item in new_diff_list])
             continue
         content_list.append(content)
