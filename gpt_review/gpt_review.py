@@ -1,3 +1,4 @@
+import tiktoken
 import os
 import re
 import json
@@ -33,12 +34,12 @@ def remove_unnecessary_lines(diff_file: str):
         diff = f.read()
 
     # remove no added diff
-    diff_header_regex = r"@@ -\d+,\d+ \+\d+,\d+ @@ .*\n"
-    split_lines = re.split(rf"({diff_header_regex})", "".join(diff))
+    diff_header_regex = re.compile(r"@@ -\d+,\d+ \+\d+,\d+ @@ .*\n")
+    split_lines = re.split(rf"({diff_header_regex.pattern})", "".join(diff))
     result: list[tuple[str, str]] = []
     regex_match_flag = False
     for index, item in enumerate(split_lines):
-        if re.match(rf"{diff_header_regex}", item):
+        if diff_header_regex.match(item):
             regex_match_flag = True
             continue
         if regex_match_flag:
@@ -64,11 +65,11 @@ def remove_unnecessary_lines(diff_file: str):
     removed_diff = "".join(removed_result)
 
     # remove no diff file
-    file_header_regex = r"diff --git .*\nindex .*\n--- .*\n\+\+\+ .*\n"
-    split_lines = re.split(rf"({file_header_regex})", removed_diff)
+    file_header_regex = re.compile(r"diff --git .*\nindex .*\n--- .*\n\+\+\+ .*\n")
+    split_lines = re.split(rf"({file_header_regex.pattern})", removed_diff)
     split_diff: list[str] = []
     for index, item in enumerate(split_lines):
-        if re.match(rf"{file_header_regex}", item):
+        if file_header_regex.match(item):
             regex_match_flag = True
             continue
         if regex_match_flag and item:
@@ -96,10 +97,10 @@ def add_line_numbers_to_diff(diff_file: str):
             result.append(line)
             continue
         if line.startswith(" "):
-            line = f" {line_number}" + line
+            line = f"{line_number}" + line
             line_number += 1
         if line.startswith("+"):
-            line = f" {line_number}" + line
+            line = f"{line_number}" + line
             line_number += 1
         if line.startswith("-"):
             line = " " + line
@@ -109,30 +110,68 @@ def add_line_numbers_to_diff(diff_file: str):
         f.writelines(result)
 
 
+def split_difference_by_file() -> list[str]:
+    with open(PROMPT_DIFF_FILE, "r") as f:
+        diff = f.read()
+    file_header_regex = re.compile(r"diff --git .*\nindex .*\n--- .*\n\+\+\+ .*\n")
+    split_lines = re.split(rf"({file_header_regex.pattern})", diff)
+    diff_list: list[str] = []
+    for index, item in enumerate(split_lines):
+        if file_header_regex.match(item):
+            diff_list.append(item + split_lines[index + 1])
+
+    PROMPT_FILE = os.getenv("PROMPT_FILE", "prompt.md")
+    with open(PROMPT_FILE, "r") as f:
+        template = f.read()
+    encoding = tiktoken.encoding_for_model("gpt-4")
+    MAX_TOKEN = int(os.getenv("MAX_TOKEN", "8000"))
+    template_token_length = len(encoding.encode(template.format(diff="")))
+    content_length = MAX_TOKEN - template_token_length
+    content_list: list[str] = []
+    for diff in diff_list:
+        content = template.format(diff=diff)
+        token = encoding.encode(text=content)
+        if len(token) > MAX_TOKEN:
+            token = encoding.encode(text=diff)
+            match = file_header_regex.match(diff)
+            file_header = match.group(0)
+            length = content_length - len(encoding.encode(text=file_header))
+            new_diff_list = [
+                encoding.decode(token[i : i + length])
+                for i in range(0, len(token), length)
+            ]
+            for index, new_diff in enumerate(new_diff_list):
+                if file_header_regex.match(new_diff):
+                    continue
+                new_diff_list[index] = file_header + new_diff
+            content_list.extend([template.format(diff=item) for item in new_diff_list])
+            continue
+        content_list.append(content)
+    return content_list
+
+
 def review():
     AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
     AZURE_API_BASE = os.getenv("AZURE_API_BASE")
     AZURE_API_VERSION = os.getenv("AZURE_API_VERSION")
     AZURE_DEPLOY_MODEL = os.getenv("AZURE_DEPLOY_MODEL")
     DIFF_FILE = os.getenv("DIFF_FILE", "diff.txt")
-    PROMPT_FILE = os.getenv("PROMPT_FILE", "prompt.md")
 
     exclude_files_from_diff(diff_file=DIFF_FILE)
     remove_unnecessary_lines(diff_file=DIFF_FILE)
     add_line_numbers_to_diff(diff_file=DIFF_FILE)
-
-    with open(PROMPT_DIFF_FILE, "r") as f:
-        diff = f.read()
+    content_list = split_difference_by_file()
 
     reviews: list[dict] = []
-    if diff:
-        client = AzureOpenAI(
-            api_key=AZURE_OPENAI_API_KEY,
-            api_version=AZURE_API_VERSION,
-            azure_endpoint=AZURE_API_BASE,
-            azure_deployment=AZURE_DEPLOY_MODEL,
-        )
-
+    client = AzureOpenAI(
+        api_key=AZURE_OPENAI_API_KEY,
+        api_version=AZURE_API_VERSION,
+        azure_endpoint=AZURE_API_BASE,
+        azure_deployment=AZURE_DEPLOY_MODEL,
+    )
+    for content in content_list:
+        if not content:
+            continue
         functions = [
             {
                 "name": "code_review",
@@ -188,9 +227,6 @@ def review():
             }
         ]
 
-        with open(PROMPT_FILE, "r") as f:
-            template = f.read()
-        content = template.format(diff=diff)
         chat_completion = client.chat.completions.create(
             messages=[
                 {
@@ -204,7 +240,7 @@ def review():
             temperature=0,
         )
         response = chat_completion.choices[0].message.function_call.arguments
-        reviews = json.loads(response)["reviews"]
+        reviews.extend(json.loads(response)["reviews"])
     github_comment(reviews=reviews)
 
 
