@@ -96,10 +96,10 @@ def add_line_numbers_to_diff(diff_file: str):
             result.append(line)
             continue
         if line.startswith(" "):
-            line = f" {line_number}" + line
+            line = f"{line_number}" + line
             line_number += 1
         if line.startswith("+"):
-            line = f" {line_number}" + line
+            line = f"{line_number}" + line
             line_number += 1
         if line.startswith("-"):
             line = " " + line
@@ -107,6 +107,18 @@ def add_line_numbers_to_diff(diff_file: str):
 
     with open(PROMPT_DIFF_FILE, "w") as f:
         f.writelines(result)
+
+
+def split_difference_by_file() -> list[str]:
+    with open(PROMPT_DIFF_FILE, "r") as f:
+        diff = f.read()
+    file_header_regex = r"diff --git .*\nindex .*\n--- .*\n\+\+\+ .*\n"
+    split_lines = re.split(rf"({file_header_regex})", diff)
+    result: list[str] = []
+    for index, item in enumerate(split_lines):
+        if re.match(rf"{file_header_regex}", item):
+            result.append(item + split_lines[index + 1])
+    return result
 
 
 def review():
@@ -120,91 +132,92 @@ def review():
     exclude_files_from_diff(diff_file=DIFF_FILE)
     remove_unnecessary_lines(diff_file=DIFF_FILE)
     add_line_numbers_to_diff(diff_file=DIFF_FILE)
-
-    with open(PROMPT_DIFF_FILE, "r") as f:
-        diff = f.read()
+    diff_list = split_difference_by_file()
 
     reviews: list[dict] = []
-    if diff:
-        client = AzureOpenAI(
-            api_key=AZURE_OPENAI_API_KEY,
-            api_version=AZURE_API_VERSION,
-            azure_endpoint=AZURE_API_BASE,
-            azure_deployment=AZURE_DEPLOY_MODEL,
-        )
+    if diff_list:
+        with open(PROMPT_FILE, "r") as f:
+            template = f.read()
+        for diff in diff_list:
+            if not diff:
+                continue
+            client = AzureOpenAI(
+                api_key=AZURE_OPENAI_API_KEY,
+                api_version=AZURE_API_VERSION,
+                azure_endpoint=AZURE_API_BASE,
+                azure_deployment=AZURE_DEPLOY_MODEL,
+            )
 
-        functions = [
-            {
-                "name": "code_review",
-                "description": "Engineer-friendly code review of GitHub diffs in application development",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "reviews": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "file_path": {
-                                        "type": "string",
-                                        "description": "Read the path of the file to be pointed out from the differences.",
+            functions = [
+                {
+                    "name": "code_review",
+                    "description": "Engineer-friendly code review of GitHub diffs in application development",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "reviews": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "file_path": {
+                                            "type": "string",
+                                            "description": "Read the path of the file to be pointed out from the differences.",
+                                        },
+                                        "line_number": {
+                                            "type": "number",
+                                            "description": "Read the line numbers listed at the left end of each line from the provided differences such as ' <line_number>+ <code>' not '<line_number> <code>'."
+                                            "Always specify the line numbers of the code after the changes, not before.",
+                                        },
+                                        "perspective": {
+                                            "type": "string",
+                                            "description": "Select the perspective from which the code had an issue: 'パフォーマンス', 'セキュリティ', or '保守性'. Must be Japanese.",
+                                        },
+                                        "level": {
+                                            "type": "string",
+                                            "description": "Evaluate how critical the issue is on a scale."
+                                            "Please choose from the following six options: Critical, High, Medium, Low, Warning, Info."
+                                            "Note that the level decreases from Critical to Info. Must be English.",
+                                        },
+                                        "review_comment": {
+                                            "type": "string",
+                                            "description": "Describe the specific issues. Write the code correction proposals in 'fixed_code'. Must be Japanese.",
+                                        },
+                                        "fixed_code": {
+                                            "type": "string",
+                                            "description": "Only write the corrected code. Do not write review comments or points of issue here, make sure it is not influenced by Japanese or English."
+                                            "Please maintain the indentation of the code below. Additionally, if there is no specific code to correct, it can be omitted.",
+                                        },
                                     },
-                                    "line_number": {
-                                        "type": "number",
-                                        "description": "Read the line numbers listed at the left end of each line from the provided differences such as ' <line_number>+ <code>' not '<line_number> <code>'."
-                                        "Always specify the line numbers of the code after the changes, not before.",
-                                    },
-                                    "perspective": {
-                                        "type": "string",
-                                        "description": "Select the perspective from which the code had an issue: 'パフォーマンス', 'セキュリティ', or '保守性'. Must be Japanese.",
-                                    },
-                                    "level": {
-                                        "type": "string",
-                                        "description": "Evaluate how critical the issue is on a scale."
-                                        "Please choose from the following six options: Critical, High, Medium, Low, Warning, Info."
-                                        "Note that the level decreases from Critical to Info. Must be English.",
-                                    },
-                                    "review_comment": {
-                                        "type": "string",
-                                        "description": "Describe the specific issues. Write the code correction proposals in 'fixed_code'. Must be Japanese.",
-                                    },
-                                    "fixed_code": {
-                                        "type": "string",
-                                        "description": "Only write the corrected code. Do not write review comments or points of issue here, make sure it is not influenced by Japanese or English."
-                                        "Please maintain the indentation of the code below. Additionally, if there is no specific code to correct, it can be omitted.",
-                                    },
+                                    "required": [
+                                        "file_path",
+                                        "line_number",
+                                        "perspective",
+                                        "level",
+                                        "review_comment",
+                                    ],
                                 },
-                                "required": [
-                                    "file_path",
-                                    "line_number",
-                                    "perspective",
-                                    "level",
-                                    "review_comment",
-                                ],
                             },
                         },
                     },
-                },
-            }
-        ]
+                }
+            ]
 
-        with open(PROMPT_FILE, "r") as f:
-            template = f.read()
-        content = template.format(diff=diff)
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user",
-                    "content": content,
-                },
-            ],
-            model=AZURE_DEPLOY_MODEL,
-            functions=functions,
-            max_tokens=4096,
-            temperature=0,
-        )
-        response = chat_completion.choices[0].message.function_call.arguments
-        reviews = json.loads(response)["reviews"]
+            content = template.format(diff=diff)
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": content,
+                    },
+                ],
+                model=AZURE_DEPLOY_MODEL,
+                functions=functions,
+                max_tokens=4096,
+                temperature=0,
+            )
+            response = chat_completion.choices[0].message.function_call.arguments
+            reviews.extend(json.loads(response)["reviews"])
     github_comment(reviews=reviews)
 
 
