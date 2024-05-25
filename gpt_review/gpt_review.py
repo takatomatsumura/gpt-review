@@ -6,7 +6,7 @@ from openai import AzureOpenAI
 
 
 PROMPT_DIFF_FILE = "diff_with_line_number.txt"
-OUTPUT_MAX_TOKEN = int(os.getenv("OUTPUT_MAX_TOKEN", 2048))
+OUTPUT_MAX_TOKEN = int(os.getenv("OUTPUT_MAX_TOKEN", "2048"))
 
 
 def exclude_files_from_diff(diff_file: str):
@@ -125,7 +125,7 @@ def get_content_list() -> list[str]:
     with open(PROMPT_FILE, "r") as f:
         template = f.read()
     encoding = tiktoken.encoding_for_model("gpt-4")
-    INPUT_MAX_TOKEN = int(os.getenv("INPUT_MAX_TOKEN", 8000)) - OUTPUT_MAX_TOKEN
+    INPUT_MAX_TOKEN = int(os.getenv("INPUT_MAX_TOKEN", "8000")) - OUTPUT_MAX_TOKEN
     if INPUT_MAX_TOKEN < 1:
         raise Exception(f"INPUT_MAX_TOKEN must be lager than {OUTPUT_MAX_TOKEN}.")
     template_token_length = len(encoding.encode(template.format(diff="")))
