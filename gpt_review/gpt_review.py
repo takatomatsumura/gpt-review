@@ -34,12 +34,12 @@ def remove_unnecessary_lines(diff_file: str):
         diff = f.read()
 
     # remove no added diff
-    diff_header_regex = r"@@ -\d+,\d+ \+\d+,\d+ @@ .*\n"
-    split_lines = re.split(rf"({diff_header_regex})", "".join(diff))
+    diff_header_regex = re.compile(r"@@ -\d+,\d+ \+\d+,\d+ @@ .*\n")
+    split_lines = re.split(rf"({diff_header_regex.pattern})", "".join(diff))
     result: list[tuple[str, str]] = []
     regex_match_flag = False
     for index, item in enumerate(split_lines):
-        if re.match(rf"{diff_header_regex}", item):
+        if diff_header_regex.match(item):
             regex_match_flag = True
             continue
         if regex_match_flag:
@@ -65,11 +65,11 @@ def remove_unnecessary_lines(diff_file: str):
     removed_diff = "".join(removed_result)
 
     # remove no diff file
-    file_header_regex = r"diff --git .*\nindex .*\n--- .*\n\+\+\+ .*\n"
-    split_lines = re.split(rf"({file_header_regex})", removed_diff)
+    file_header_regex = re.compile(r"diff --git .*\nindex .*\n--- .*\n\+\+\+ .*\n")
+    split_lines = re.split(rf"({file_header_regex.pattern})", removed_diff)
     split_diff: list[str] = []
     for index, item in enumerate(split_lines):
-        if re.match(rf"{file_header_regex}", item):
+        if file_header_regex.match(item):
             regex_match_flag = True
             continue
         if regex_match_flag and item:
@@ -156,86 +156,84 @@ def review():
     content_list = split_difference_by_file()
 
     reviews: list[dict] = []
-    if content_list:
-        for content in content_list:
-            if not content:
-                continue
-            client = AzureOpenAI(
-                api_key=AZURE_OPENAI_API_KEY,
-                api_version=AZURE_API_VERSION,
-                azure_endpoint=AZURE_API_BASE,
-                azure_deployment=AZURE_DEPLOY_MODEL,
-            )
-
-            functions = [
-                {
-                    "name": "code_review",
-                    "description": "Engineer-friendly code review of GitHub diffs in application development",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "reviews": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "file_path": {
-                                            "type": "string",
-                                            "description": "Read the path of the file to be pointed out from the differences.",
-                                        },
-                                        "line_number": {
-                                            "type": "number",
-                                            "description": "Read the line numbers listed at the left end of each line from the provided differences such as ' <line_number>+ <code>' not '<line_number> <code>'."
-                                            "Always specify the line numbers of the code after the changes, not before.",
-                                        },
-                                        "perspective": {
-                                            "type": "string",
-                                            "description": "Select the perspective from which the code had an issue: 'パフォーマンス', 'セキュリティ', or '保守性'. Must be Japanese.",
-                                        },
-                                        "level": {
-                                            "type": "string",
-                                            "description": "Evaluate how critical the issue is on a scale."
-                                            "Please choose from the following six options: Critical, High, Medium, Low, Warning, Info."
-                                            "Note that the level decreases from Critical to Info. Must be English.",
-                                        },
-                                        "review_comment": {
-                                            "type": "string",
-                                            "description": "Describe the specific issues. Write the code correction proposals in 'fixed_code'. Must be Japanese.",
-                                        },
-                                        "fixed_code": {
-                                            "type": "string",
-                                            "description": "Only write the corrected code. Do not write review comments or points of issue here, make sure it is not influenced by Japanese or English."
-                                            "Please maintain the indentation of the code below. Additionally, if there is no specific code to correct, it can be omitted.",
-                                        },
+    client = AzureOpenAI(
+        api_key=AZURE_OPENAI_API_KEY,
+        api_version=AZURE_API_VERSION,
+        azure_endpoint=AZURE_API_BASE,
+        azure_deployment=AZURE_DEPLOY_MODEL,
+    )
+    for content in content_list:
+        if not content:
+            continue
+        functions = [
+            {
+                "name": "code_review",
+                "description": "Engineer-friendly code review of GitHub diffs in application development",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "reviews": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "file_path": {
+                                        "type": "string",
+                                        "description": "Read the path of the file to be pointed out from the differences.",
                                     },
-                                    "required": [
-                                        "file_path",
-                                        "line_number",
-                                        "perspective",
-                                        "level",
-                                        "review_comment",
-                                    ],
+                                    "line_number": {
+                                        "type": "number",
+                                        "description": "Read the line numbers listed at the left end of each line from the provided differences such as ' <line_number>+ <code>' not '<line_number> <code>'."
+                                        "Always specify the line numbers of the code after the changes, not before.",
+                                    },
+                                    "perspective": {
+                                        "type": "string",
+                                        "description": "Select the perspective from which the code had an issue: 'パフォーマンス', 'セキュリティ', or '保守性'. Must be Japanese.",
+                                    },
+                                    "level": {
+                                        "type": "string",
+                                        "description": "Evaluate how critical the issue is on a scale."
+                                        "Please choose from the following six options: Critical, High, Medium, Low, Warning, Info."
+                                        "Note that the level decreases from Critical to Info. Must be English.",
+                                    },
+                                    "review_comment": {
+                                        "type": "string",
+                                        "description": "Describe the specific issues. Write the code correction proposals in 'fixed_code'. Must be Japanese.",
+                                    },
+                                    "fixed_code": {
+                                        "type": "string",
+                                        "description": "Only write the corrected code. Do not write review comments or points of issue here, make sure it is not influenced by Japanese or English."
+                                        "Please maintain the indentation of the code below. Additionally, if there is no specific code to correct, it can be omitted.",
+                                    },
                                 },
+                                "required": [
+                                    "file_path",
+                                    "line_number",
+                                    "perspective",
+                                    "level",
+                                    "review_comment",
+                                ],
                             },
                         },
                     },
-                }
-            ]
+                },
+            }
+        ]
 
-            chat_completion = client.chat.completions.create(
-                messages=[
-                    {
-                        "role": "user",
-                        "content": content,
-                    },
-                ],
-                model=AZURE_DEPLOY_MODEL,
-                functions=functions,
-                max_tokens=4096,
-                temperature=0,
-            )
-            response = chat_completion.choices[0].message.function_call.arguments
-            reviews.extend(json.loads(response)["reviews"])
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": content,
+                },
+            ],
+            model=AZURE_DEPLOY_MODEL,
+            functions=functions,
+            max_tokens=4096,
+            temperature=0,
+        )
+        response = chat_completion.choices[0].message.function_call.arguments
+        reviews.extend(json.loads(response)["reviews"])
     github_comment(reviews=reviews)
 
 
