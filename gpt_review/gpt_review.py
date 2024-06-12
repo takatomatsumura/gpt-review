@@ -244,6 +244,8 @@ def review():
         )
         response = chat_completion.choices[0].message.function_call.arguments
         reviews.extend(json.loads(response)["reviews"])
+    target_levels = [level.lower() for level in ["Critical", "High"]]
+    reviews = [review for review in reviews if review["level"].lower() in target_levels]
     github_comment(reviews=reviews)
 
 
