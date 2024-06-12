@@ -26,7 +26,7 @@ I will now present the differences that have arisen in the Pull Request on GitHu
 - The review content can be in Japanese.
 - Not to offend the implementer.
 - Additionally, please include motivational and partially affirmative comments in the review comments with pointing out.
-- Do not make multiple comments about the same issue. For example, if the name of a variable is not preferable, it is sufficient to point it out at just one reference.
+- **Please limit similar comments to one location.　Do not make multiple comments about the same issue. For example, if the name of a variable is not preferable, it is sufficient to point it out at just one reference.**
 
 The code differences follow the Unified Diff Format. I will explain the Unified Diff Format.
 
